@@ -4,16 +4,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const uploadStatus = document.getElementById('uploadStatus');
+    const dropZone = document.getElementById('dropZone');
+
+    // Drag and Drop events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropZone.classList.add('drag-over');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('drag-over');
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
 
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        if (fileInput.files.length === 0) {
-            return;
+        if (fileInput.files.length > 0) {
+            handleFiles(fileInput.files);
         }
+    });
+
+    async function handleFiles(files) {
+        if (files.length === 0) return;
 
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', files[0]); // Currently handling single file upload
 
         uploadStatus.textContent = 'Uploading...';
 
@@ -34,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error:', error);
             uploadStatus.textContent = 'An error occurred.';
         }
-    });
+    }
 });
 
 async function loadFiles() {
@@ -49,7 +87,21 @@ async function loadFiles() {
             const li = document.createElement('li');
             li.className = 'file-item';
             
-            const nameSpan = document.createElement('span');
+            // Thumbnail
+            const thumbDiv = document.createElement('div');
+            thumbDiv.className = 'file-thumbnail';
+            if (file.thumbnailUrl) {
+                const img = document.createElement('img');
+                img.src = file.thumbnailUrl;
+                img.className = 'file-thumbnail';
+                thumbDiv.innerHTML = '';
+                thumbDiv.appendChild(img);
+            } else {
+                thumbDiv.textContent = file.name.split('.').pop().toUpperCase();
+            }
+
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'file-name';
             nameSpan.textContent = file.name;
             
             const downloadLink = document.createElement('a');
@@ -58,6 +110,7 @@ async function loadFiles() {
             downloadLink.className = 'download-btn';
             downloadLink.setAttribute('download', '');
 
+            li.appendChild(thumbDiv);
             li.appendChild(nameSpan);
             li.appendChild(downloadLink);
             fileList.appendChild(li);

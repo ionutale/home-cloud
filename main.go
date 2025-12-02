@@ -8,27 +8,34 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"goftp.io/server/v2"
 	"goftp.io/server/v2/driver/file"
 )
 
 const (
-	uploadDir = "./uploads"
-	httpPort  = ":8080"
-	ftpPort   = 2121
+	uploadDir    = "./uploads"
+	thumbnailDir = "./thumbnails"
+	httpPort     = ":8080"
+	ftpPort      = 2121
 )
 
 type FileInfo struct {
-	Name    string `json:"name"`
-	Size    int64  `json:"size"`
-	ModTime string `json:"modTime"`
+	Name         string `json:"name"`
+	Size         int64  `json:"size"`
+	ModTime      string `json:"modTime"`
+	ThumbnailUrl string `json:"thumbnailUrl,omitempty"`
 }
 
 func main() {
-	// Ensure upload directory exists
+	// Ensure upload and thumbnail directories exist
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Fatal(err)
+	}
+	if err := os.MkdirAll(thumbnailDir, 0755); err != nil {
 		log.Fatal(err)
 	}
 
@@ -37,6 +44,7 @@ func main() {
 
 	// HTTP Server
 	http.Handle("/", http.FileServer(http.Dir("./public")))
+	http.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(thumbnailDir))))
 	http.HandleFunc("/upload", handleUpload)
 	http.HandleFunc("/files", handleListFiles)
 	http.HandleFunc("/download/", handleDownload)
@@ -109,6 +117,12 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate thumbnail if it's an image
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" {
+		go generateThumbnail(dstPath, header.Filename)
+	}
+
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "File uploaded successfully")
 }
@@ -132,11 +146,20 @@ func handleListFiles(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			files = append(files, FileInfo{
+
+			fileInfo := FileInfo{
 				Name:    entry.Name(),
 				Size:    info.Size(),
 				ModTime: info.ModTime().Format(time.RFC3339),
-			})
+			}
+
+			// Check if thumbnail exists
+			thumbPath := filepath.Join(thumbnailDir, entry.Name())
+			if _, err := os.Stat(thumbPath); err == nil {
+				fileInfo.ThumbnailUrl = "/thumbnails/" + entry.Name()
+			}
+
+			files = append(files, fileInfo)
 		}
 	}
 
@@ -161,4 +184,20 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 
 	filePath := filepath.Join(uploadDir, filename)
 	http.ServeFile(w, r, filePath)
+}
+
+func generateThumbnail(srcPath, filename string) {
+	src, err := imaging.Open(srcPath)
+	if err != nil {
+		log.Printf("Error opening image for thumbnail: %v", err)
+		return
+	}
+
+	// Resize to 100x100, preserving aspect ratio
+	dst := imaging.Thumbnail(src, 100, 100, imaging.Lanczos)
+
+	dstPath := filepath.Join(thumbnailDir, filename)
+	if err := imaging.Save(dst, dstPath); err != nil {
+		log.Printf("Error saving thumbnail: %v", err)
+	}
 }

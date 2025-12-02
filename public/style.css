@@ -22,16 +22,25 @@ h1 {
 
 .upload-section {
     margin-bottom: 30px;
-    padding: 20px;
+    padding: 40px;
     background: #f8f9fa;
     border-radius: 6px;
-    border: 1px dashed #ccc;
+    border: 2px dashed #ccc;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.upload-section.drag-over {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
 }
 
 form {
     display: flex;
     gap: 10px;
     align-items: center;
+    justify-content: center;
+    margin-top: 20px;
 }
 
 button {
@@ -51,37 +60,54 @@ button:hover {
 #fileList {
     list-style: none;
     padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 20px;
 }
 
 .file-item {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
+    padding: 15px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    text-align: center;
 }
 
-.file-item:last-child {
-    border-bottom: none;
+.file-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.file-link {
-    text-decoration: none;
-    color: #333;
-    font-weight: 500;
+.file-thumbnail {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    background-color: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 12px;
 }
 
-.file-link:hover {
-    color: #007bff;
+.file-name {
+    margin-bottom: 10px;
+    word-break: break-all;
+    font-size: 14px;
 }
 
 .download-btn {
     background-color: #28a745;
     padding: 5px 10px;
-    font-size: 14px;
+    font-size: 12px;
     text-decoration: none;
     color: white;
     border-radius: 3px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .download-btn:hover {

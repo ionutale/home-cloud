@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  home-cloud:
+    build: .
+    ports:
+      - "8080:8080"
+      - "2121:2121"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./thumbnails:/app/thumbnails
+    restart: unless-stopped
