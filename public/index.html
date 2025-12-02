@@ -14,9 +14,12 @@
             <h2>Upload File</h2>
             <p>Drag and drop files here or use the form below</p>
             <form id="uploadForm">
-                <input type="file" id="fileInput" name="file" required>
+                <input type="file" id="fileInput" name="file" multiple required>
                 <button type="submit">Upload</button>
             </form>
+            <div id="progressContainer" style="display: none;">
+                <div id="progressBar"></div>
+            </div>
             <div id="uploadStatus"></div>
         </div>
 

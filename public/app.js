@@ -40,6 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(files);
     }
 
+    let uploadQueue = [];
+    let isUploading = false;
+
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (fileInput.files.length > 0) {
@@ -47,30 +50,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function handleFiles(files) {
+    function handleFiles(files) {
         if (files.length === 0) return;
+        
+        // Add files to queue
+        for (let i = 0; i < files.length; i++) {
+            uploadQueue.push(files[i]);
+        }
+        
+        processQueue();
+    }
+
+    async function processQueue() {
+        if (isUploading || uploadQueue.length === 0) return;
+
+        isUploading = true;
+        const file = uploadQueue.shift();
+        
+        uploadStatus.textContent = `Uploading ${file.name}... (${uploadQueue.length} more in queue)`;
+        
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
 
         const formData = new FormData();
-        formData.append('file', files[0]); // Currently handling single file upload
-
-        uploadStatus.textContent = 'Uploading...';
+        formData.append('file', file);
 
         try {
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
+            await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/upload', true);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        resolve(xhr.response);
+                    } else {
+                        reject(new Error('Upload failed'));
+                    }
+                };
+
+                xhr.onerror = () => {
+                    reject(new Error('Network error'));
+                };
+
+                xhr.send(formData);
             });
 
-            if (response.ok) {
-                uploadStatus.textContent = 'Upload successful!';
-                fileInput.value = ''; // Clear input
-                loadFiles(); // Refresh list
-            } else {
-                uploadStatus.textContent = 'Upload failed.';
-            }
+            loadFiles(); // Refresh list after each success
         } catch (error) {
-            console.error('Error:', error);
-            uploadStatus.textContent = 'An error occurred.';
+            console.error(`Upload failed for ${file.name}`, error);
+            uploadStatus.textContent = `Upload failed for ${file.name}`;
+        } finally {
+            isUploading = false;
+            progressBar.style.width = '0%';
+            progressContainer.style.display = 'none';
+            
+            if (uploadQueue.length > 0) {
+                processQueue();
+            } else {
+                uploadStatus.textContent = 'All uploads complete!';
+                fileInput.value = ''; // Clear input
+            }
         }
     }
 });
